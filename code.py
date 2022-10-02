@@ -1,28 +1,108 @@
+# Imports
 import pyperclip, string
 import pygame, sys, shelve, colorsys, math, os
 from random import *
+
+# Main settings
 WIDTH = 1100
 HEIGHT = 600
 FPS = 60
 _dev = False
+
+# Init Pygame
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Game")
 pygame.display.set_icon(pygame.image.load("images/icon.png"))
 clock = pygame.time.Clock()
 running = True
-itemsCollect = []
-NPCs = []
-jumpCount = 1
-showfps = False
-autoload = False
 
-curTime = 300
-timeAdd = 1
-timeMode = 1
-day = 30000
+# Sprites
+unknown_item = pygame.image.load("images/items/unknown_item.png").convert_alpha()
+map_world = pygame.image.load("images/map.png").convert_alpha()
+spritesets = {
+    "player": {
+        "normal": {
+            "idle": pygame.image.load("images/glav.png").convert_alpha(),
+            "left": pygame.image.load("images/glav_left.png").convert_alpha(),
+            "right": pygame.image.load("images/glav_right.png").convert_alpha(),
+        }
+    },
+    "slash": {
+        "normal": {
+            0: pygame.image.load("images/slash_1.png").convert_alpha(),
+            1: pygame.image.load("images/slash_2.png").convert_alpha(),
+            2: pygame.image.load("images/slash_3.png").convert_alpha(),
+            3: pygame.image.load("images/slash_4.png").convert_alpha(),
+            4: pygame.image.load("images/slash_5.png").convert_alpha(),
+        },
+        "red": {
+            0: pygame.image.load("images/red_slash_1.png").convert_alpha(),
+            1: pygame.image.load("images/red_slash_2.png").convert_alpha(),
+            2: pygame.image.load("images/red_slash_3.png").convert_alpha(),
+            3: pygame.image.load("images/red_slash_4.png").convert_alpha(),
+            4: pygame.image.load("images/red_slash_5.png").convert_alpha(),
+        }
+    }
+}
 
-all_letters = string.printable+"АаБбВвГгДдЕеЁёЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЪъЫыЬьЭэЮюЯя"
+bg_menu_1 = pygame.image.load("images/menu.png").convert_alpha()
+bg_menu = pygame.image.load("images/fonmenu.png").convert_alpha()
+bg_menu_8 = pygame.image.load("images/menubg_8.png").convert_alpha()
+bg_menu_7 = pygame.image.load("images/menubg_7.png").convert_alpha()
+glav = pygame.image.load("images/glav.png").convert_alpha()
+wood1 = pygame.image.load("images/wood1.png").convert_alpha()
+bg_fon1izmen = pygame.image.load("images/fon1izmen.png").convert_alpha()
+bg_fon1izmen_rect = bg_fon1izmen.get_rect()
+
+bg = bg_fon1izmen
+
+bgs = [
+    bg_menu,
+    bg_fon1izmen,
+    bg_menu_1,
+    bg_menu_7,
+    bg_menu_8
+]
+menu_bg = bgs[0]
+
+bg_rect = pygame.Rect(0, 0, WIDTH, HEIGHT) 
+
+# Functions
+def c_index_set(s):
+    global c_index
+    if s < 0: s = len(console)
+    elif s > len(console): s = 0
+    c_index = s
+
+def clear():
+    global console_log
+    console_log = []
+
+def log(text):
+    console_log.append(str(text))
+def print(text):
+    console_log.append(str(text))
+
+def input():
+    console_log.append("no")
+
+def help():
+    global help_i
+    if help_i == 0:
+        log("Bro, you can change EVEREYHING why do you call for help?")
+        log('Just type p.x = 999 or p.inv[0]["amount"] = 999')
+    if help_i == 1:
+        log("Bro, just type something cool in console and watch how it works")
+    if help_i == 2:
+        log("Bruh please stop")
+    if help_i > 2 and help_i != 5 and help_i != 15:
+        log("...")
+    if help_i == 5:
+        log("Just type sys.exit()")
+    if help_i == 15:
+        raise Exception("HelpException: So many help")
+    help_i+=1
 
 def text(text, x, y, size, col):
     font = pygame.font.Font("slkscr.ttf", size)
@@ -45,15 +125,77 @@ def text_ru_en_lh(text, x, y, size, col):
     textRect.left, textRect.top = x, y 
     return (rendertext, textRect)
 
+
+
+# Variables -----
+
+# - Console
+console_log = []
+console_title = "Console"
+console = ""
+last_command = ""
+alt = False
+inConsole = False
+c_index = 0
+console_blocked = [pygame.K_RETURN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_ESCAPE, pygame.K_DELETE, pygame.K_BACKSPACE, pygame.K_TAB, pygame.K_RSHIFT, pygame.K_LSHIFT, pygame.K_RCTRL, pygame.K_LCTRL, pygame.K_LALT, pygame.K_RALT, pygame.K_CAPSLOCK, pygame.K_UP, pygame.K_DOWN]
+
+# - Dialoge
+dialoge = []
+inDialoge = False
+dialoge_draw_from = 0
+dialoge_draw_to = 5
+
+# - Other lists
+itemsCollect = []
+NPCs = []
+objects = []
+
+# - Time
+curTime = 300
+timeAdd = 1
+timeMode = 1
+day = 30000
+
+# - Colors
+TFColors = {
+    False: (255,0,0),
+    True: (123,255,123)
+}
+
+# - Biomes
+biomes_map = {
+    0: {"text": "Поляна", "biome": "", "rect": pygame.Rect(850,480,240,110)},
+    1: {"text": "Деревня", "biome": "", "rect": pygame.Rect(700,70,380,120)},
+    2: {"text": "Пещера", "biome": "", "rect": pygame.Rect(350,10,150,75)},
+}
+
+# - Unsoted
+all_letters = string.printable+"АаБбВвГгДдЕеЁёЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЪъЫыЬьЭэЮюЯя"
+showfps = False
+autoload = False
+s = pygame.Surface((WIDTH,HEIGHT))
+s.set_alpha(128)
+s.fill((0,0,0))
+s2 = pygame.Surface((WIDTH,HEIGHT))
+s2.set_alpha(0)
+s2.fill((0,0,0))
+help_i = 0
+rgb_temp = 0
+mode = "menu"
+inMap = True
+
+
+# - Items System
+
 # items ид предмета обозначается цифрой
 # например 1: {"name":"Доски", "max": 0,
 # 1 - ид предмета, name - имя, max - максимальное кол-во стака
 # 
 # когда добавляешь предмет не делай ид как у других, иначе заменится
-# 5: {"name":"Ничего", "max": 0,
-# 5: {"name":"Ничего", "max": 0,
-# 5: {"name":"Ничего", "max": 0,
-# 5: {"name":"Ничего", "max": 0,
+# 5: {"name":"Ничего", "max": 0},
+# 5: {"name":"Ничего", "max": 0},
+# 5: {"name":"Ничего", "max": 0},
+# 5: {"name":"Ничего", "max": 0},
 # так не делай ^^^^
 # это индивидуально значение предмета, как твой discord id
 items = {
@@ -176,11 +318,8 @@ items = {
     96: {"name":"Неназначеный предмет", "rarity": 0, "max": 999, "attributes": [], "sprite": None, "script": ""},
     97: {"name":"Неназначеный предмет", "rarity": 0, "max": 999, "attributes": [], "sprite": None, "script": ""},
     98: {"name":"Неназначеный предмет", "rarity": 0, "max": 999, "attributes": [], "sprite": None, "script": ""},
-    99: {"name":"Неназначеный предмет", "rarity": 0, "max": 999, "attributes": [], "sprite": None, "script": ""},
-
-   
+    99: {"name":"Неназначеный предмет", "rarity": 0, "max": 999, "attributes": [], "sprite": None, "script": ""}  
 }
-
 
 rare = {
     0: (200,200,200),
@@ -188,7 +327,7 @@ rare = {
     2: (255,255,123),
     3: (130,0,130),
     4: (255,123,40),
-    5: (-1,-1,-1),
+    5: (-1,-1,-1)
 }
 
 inv = {
@@ -203,13 +342,11 @@ inv = {
     8: {"id":0,"amount":0},
 }
 
-p_sprites = {
-    "idle": pygame.image.load("images/glav.png").convert_alpha(),
-    "left": pygame.image.load("images/glav_left.png").convert_alpha(),
-    "right": pygame.image.load("images/glav_right.png").convert_alpha(),
-}
 
-unknown_item = pygame.image.load("images/items/unknown_item.png").convert_alpha()
+
+
+
+# Classes
 
 class Camera(object):
     def __init__(self, x, y, w, h):
@@ -220,7 +357,67 @@ class Camera(object):
         if p.x < self.x + 250: self.x -= 5
         if p.x > self.w - 250: self.x += 5
 
-c = Camera(0,0,WIDTH,HEIGHT)
+class Menu(object):
+    def __init__(self):
+        self.options = {}
+        self.option = 0
+        self.index = 0
+    def add_option(self, id_, name):
+        self.options[id_] = {}
+        self.options[id_]["name"] = name
+        self.options[id_]["options"] = {}
+    def add_suboption(self, option, name, id_, script, color = (255,255,255), arg1 = None, arg2 = None, arg3 = None):
+        self.options[option]["options"][id_] = {}
+        self.options[option]["options"][id_]["name"] = name
+        self.options[option]["options"][id_]["color"] = color
+        self.options[option]["options"][id_]["script"] = script
+        self.options[option]["options"][id_]["arg1"] = arg1
+        self.options[option]["options"][id_]["arg2"] = arg2
+        self.options[option]["options"][id_]["arg3"] = arg3
+    def draw(self):
+        totalText = text_ru_en(self.options[self.option]["name"], 55, 55, 25, (255,255,255))
+        screen.blit(totalText[0], totalText[1])
+        for i in self.options[self.option]["options"]:
+            totalText = text_ru_en(self.options[self.option]["options"][i]["name"], 75, 125+(30*i), 15, self.options[self.option]["options"][i]["color"])
+            screen.blit(totalText[0], totalText[1])
+        totalText = text(">", 55, 122+(30*self.index), 25, (255,255,0))
+        screen.blit(totalText[0], totalText[1])
+    def set_index(self, i):
+        l = len(self.options[self.option]["options"])-1
+        if i < 0: i = l
+        elif i > l: i = 0
+        self.index = i
+    def interact(self):
+        s = self.options[self.option]["options"][self.index]["script"]
+        a1 = self.options[self.option]["options"][self.index]["arg1"]
+        a2 = self.options[self.option]["options"][self.index]["arg2"]
+        a3 = self.options[self.option]["options"][self.index]["arg3"]
+        if s == "options": 
+            self.option = a1
+            self.index = 0
+        elif s == "exit":
+            if a1 != "nosave":
+                with shelve.open("save/save") as f:
+                    try:
+                        f["p"] = p
+                        f["itemsCollect"] = itemsCollect
+                    except: pass
+            pygame.quit()
+            sys.exit()
+        elif s == "setvar":
+            t = ""
+            if a3 == "global": t = f"global {a1}; "
+            exec(f"{t}{a1} = {a2}")
+        elif s == "addvar":
+            t = ""
+            if a3 == "global": t = f"global {a1}; "
+            exec(f"{t}{a1} += {a2}")
+        elif s == "nvar":
+            t = ""
+            if a3 == "global": t = f"global {a1}; "
+            exec(f"{t}{a1} = not {a1}")
+        elif s == "custom":
+            exec(a1)
 
 class CollectItem(object):
     def __init__(self, x, y, itemid):
@@ -249,6 +446,48 @@ class CollectItem(object):
             screen.blit(items[self.itemid]["sprite"], self.drawrect)
         else: screen.blit(unknown_item, self.drawrect)
 
+class Slash(object):
+    def __init__(self, x, y, lt, dirr, damage, spriteset = "normal"):
+        self.x,self.y,self.lt,self.ltm = x,y,0,lt
+        self.spriteset = spriteset
+        self.damage = damage
+        self.dirr = dirr
+        self.w = self.ltm/len(spritesets["slash"][self.spriteset])
+        self.l = 0
+        self.sprite = 0
+        t = spritesets["slash"][self.spriteset][self.sprite].get_rect()
+        self.rect = pygame.Rect(self.x, self.y, t.width, t.height)
+        self.drawrect = pygame.Rect(self.x, self.y, t.width, t.height)
+    def update(self):
+        global objects, NPCs
+        if self.lt >= self.ltm:
+            objects.remove(self)
+        self.l+=1
+        self.lt+=1
+        if self.sprite < len(spritesets["slash"][self.spriteset]):
+            t = spritesets["slash"][self.spriteset][self.sprite].get_rect()
+            self.rect = pygame.Rect(self.x, self.y, t.width, t.height)
+            self.drawrect = pygame.Rect(self.x, self.y, t.width, t.height)
+        if self.l >= self.w:
+            self.sprite+=1
+            self.l = 0
+        for n in NPCs:
+            if isinstance(n, NPC):
+                if pygame.Rect.colliderect(self.rect, n.rect):
+                    if n.imune <= 0 and n.hp != "inf":
+                        try:
+                            n.hp-=self.damage
+                            n.imune = 60
+                            if n.hp <= 0:
+                                NPCs.remove(n)
+                            NPCs.remove(self)
+                        except: pass
+    def draw(self):
+        if self.sprite < len(spritesets["slash"][self.spriteset]):
+            if self.dirr != "left": screen.blit(spritesets["slash"][self.spriteset][self.sprite], self.drawrect)
+            else: screen.blit(pygame.transform.flip(spritesets["slash"][self.spriteset][self.sprite], True, False), self.drawrect)
+
+
 class Player(object):
     def __init__(self, x, y, hp, inv):
         self.x, self.y, self.hp, self.maxhp, self.inv = x, y, hp, hp, inv
@@ -257,7 +496,7 @@ class Player(object):
         self.acc = 0
         self.accAdd = 0.3
         self.sprite = "idle"
-        t = p_sprites[self.sprite].get_rect()
+        t = spritesets["player"]["normal"][self.sprite].get_rect()
         self.rect = pygame.Rect(self.x, self.y, t.width, t.height)
         self.drawrect = pygame.Rect(self.rect.x-c.x, self.rect.y-c.y, self.rect.width, self.rect.height)
         self.canJump = True
@@ -301,7 +540,7 @@ class Player(object):
             c2 = (int(255 * r), int(255 * g), int(255 * b))
         totalText = text_ru_en(f"{self.curSlot+1}/{len(inv)} {items[self.inv[self.curSlot]['id']]['name']} {temp}", 55, 505, 25, c2)
         screen.blit(totalText[0], totalText[1])
-        screen.blit(p_sprites[self.sprite], self.drawrect)
+        screen.blit(spritesets["player"]["normal"][self.sprite], self.drawrect)
         if len(self.inv) > 15: pygame.draw.rect(screen, (100,100,100), pygame.Rect(60+(55*15), 500, 204, 24))
         else: pygame.draw.rect(screen, (100,100,100), pygame.Rect(60+(55*len(self.inv)), 555, 204, 24))
         if self.hp != "inf":
@@ -321,7 +560,7 @@ class Player(object):
                 totalText = text("inf", 162+(55*len(self.inv)), 557, 20, (255,255,255))
                 screen.blit(totalText[0], totalText[1])
     def update(self):
-        t = p_sprites["idle"].get_rect()
+        t = spritesets["player"]["normal"]["idle"].get_rect()
         if self.hp != "inf":
             if self.hp > self.maxhp: self.hp = self.maxhp
             if self.hp < 0: self.hp = 0
@@ -418,7 +657,7 @@ class NPC(object):
         self.wait = randint(50, 150)
         self.going = None
         self.sprite = "idle"
-        t = p_sprites[self.sprite].get_rect()
+        t = spritesets["player"]["normal"][self.sprite].get_rect()
         self.rect = pygame.Rect(self.x, self.y, t.width, t.height)
         self.drawrect = pygame.Rect(self.x, self.y, t.width, t.height)
     def update(self):
@@ -438,11 +677,11 @@ class NPC(object):
             self.going = choice([None, self.x+randint(-150, 150)])
             self.wait = randint(50, 150)
         self.goCounter+=1
-        t = p_sprites[self.sprite].get_rect()
+        t = spritesets["player"]["normal"][self.sprite].get_rect()
         self.rect = pygame.Rect(self.x, self.y, t.width, t.height)
         self.drawrect = pygame.Rect(self.x, self.y, t.width, t.height)
     def draw(self):
-        screen.blit(p_sprites[self.sprite], self.drawrect)
+        screen.blit(spritesets["player"]["normal"][self.sprite], self.drawrect)
         totalText = text_ru_en_lh(self.name, self.x, self.y-25, 20, (255,255,255))
         screen.blit(totalText[0], totalText[1])
         if self.showHp or self.hp < self.maxhp and self.hp != "inf":
@@ -455,231 +694,17 @@ class NPC(object):
             except Exception as e:
                 console_log.append(str(e))
 
-slash_sprites = {
-    "normal": {
-        0: pygame.image.load("images/slash_1.png").convert_alpha(),
-        1: pygame.image.load("images/slash_2.png").convert_alpha(),
-        2: pygame.image.load("images/slash_3.png").convert_alpha(),
-        3: pygame.image.load("images/slash_4.png").convert_alpha(),
-        4: pygame.image.load("images/slash_5.png").convert_alpha(),
-    },
-    "red": {
-        0: pygame.image.load("images/red_slash_1.png").convert_alpha(),
-        1: pygame.image.load("images/red_slash_2.png").convert_alpha(),
-        2: pygame.image.load("images/red_slash_3.png").convert_alpha(),
-        3: pygame.image.load("images/red_slash_4.png").convert_alpha(),
-        4: pygame.image.load("images/red_slash_5.png").convert_alpha(),
-    }
-}
-objects = []
-
-class Slash(object):
-    def __init__(self, x, y, lt, dirr, damage, spriteset = "normal"):
-        self.x,self.y,self.lt,self.ltm = x,y,0,lt
-        self.spriteset = spriteset
-        self.damage = damage
-        self.dirr = dirr
-        self.w = self.ltm/len(slash_sprites[self.spriteset])
-        self.l = 0
-        self.sprite = 0
-        t = slash_sprites[self.spriteset][self.sprite].get_rect()
-        self.rect = pygame.Rect(self.x, self.y, t.width, t.height)
-        self.drawrect = pygame.Rect(self.x, self.y, t.width, t.height)
-    def update(self):
-        global objects, NPCs
-        if self.lt >= self.ltm:
-            objects.remove(self)
-        self.l+=1
-        self.lt+=1
-        if self.sprite < len(slash_sprites[self.spriteset]):
-            t = slash_sprites[self.spriteset][self.sprite].get_rect()
-            self.rect = pygame.Rect(self.x, self.y, t.width, t.height)
-            self.drawrect = pygame.Rect(self.x, self.y, t.width, t.height)
-        if self.l >= self.w:
-            self.sprite+=1
-            self.l = 0
-        for n in NPCs:
-            if isinstance(n, NPC):
-                if pygame.Rect.colliderect(self.rect, n.rect):
-                    if n.imune <= 0 and n.hp != "inf":
-                        try:
-                            n.hp-=self.damage
-                            n.imune = 60
-                            if n.hp <= 0:
-                                NPCs.remove(n)
-                            NPCs.remove(self)
-                        except: pass
-    def draw(self):
-        if self.sprite < len(slash_sprites[self.spriteset]):
-            if self.dirr != "left": screen.blit(slash_sprites[self.spriteset][self.sprite], self.drawrect)
-            else: screen.blit(pygame.transform.flip(slash_sprites[self.spriteset][self.sprite], True, False), self.drawrect)
-dialoge = []
-inDialoge = False
-dialoge_draw_from = 0
-dialoge_draw_to = 5
-
-# for i in range(30): dialoge.append(i); inDialoge = True
 
 
-           
-bg_old_menu = pygame.image.load("images/menu.png").convert_alpha()
-bg_menu = pygame.image.load("images/fonmenu.png").convert_alpha()
-bg_menu_8 = pygame.image.load("images/menubg_8.png").convert_alpha()
-bg_menu_7 = pygame.image.load("images/menubg_7.png").convert_alpha()
-glav = pygame.image.load("images/glav.png").convert_alpha()
-glav_rect =glav.get_rect()
-wood1 = pygame.image.load("images/wood1.png").convert_alpha()
-wood1_rect = wood1.get_rect()
-bg_fon1izmen = pygame.image.load("images/fon1izmen.png").convert_alpha()
-bg_fon1izmen_rect = bg_fon1izmen.get_rect()
-apple = pygame.image.load("images/apple.png").convert_alpha()
-apple_rect = apple.get_rect()
-
-s = pygame.Surface((WIDTH,HEIGHT))
-s.set_alpha(128)
-s.fill((0,0,0))
-s2 = pygame.Surface((WIDTH,HEIGHT))
-s2.set_alpha(0)
-s2.fill((0,0,0))
-
-p = Player(400, 311, 20, inv)
-NPCs.append(NPC(500, 311, 20, "Вася", "global inDialoge; inDialoge = True; dialoge.append('Привет')"))
 
 
-for i in range(10):
-    itemsCollect.append(CollectItem(100+(i*10), 365, 3))
-if autoload:
-    with shelve.open("save/save") as f:
-        try:
-            p = f["p"]
-            itemsCollect = f["itemsCollect"]
-        except: pass
-
-rgb_temp = 0
-
-console_log = []
-console_title = "Console"
-console = ""
-last_command = ""
-alt = False
-inConsole = False
-c_index = 0
-console_blocked = [pygame.K_RETURN, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_ESCAPE, pygame.K_DELETE, pygame.K_BACKSPACE, pygame.K_TAB, pygame.K_RSHIFT, pygame.K_LSHIFT, pygame.K_RCTRL, pygame.K_LCTRL, pygame.K_LALT, pygame.K_RALT, pygame.K_CAPSLOCK, pygame.K_UP, pygame.K_DOWN]
 
 
-# tiles = math.ceil(WIDTH  / fon1izmen_rect.width) + 1
-def c_index_set(s):
-    global c_index
-    if s < 0: s = len(console)
-    elif s > len(console): s = 0
-    c_index = s
 
-class Menu(object):
-    def __init__(self):
-        self.options = {}
-        self.option = 0
-        self.index = 0
-    def add_option(self, id_, name):
-        self.options[id_] = {}
-        self.options[id_]["name"] = name
-        self.options[id_]["options"] = {}
-    def add_suboption(self, option, name, id_, script, color = (255,255,255), arg1 = None, arg2 = None, arg3 = None):
-        self.options[option]["options"][id_] = {}
-        self.options[option]["options"][id_]["name"] = name
-        self.options[option]["options"][id_]["color"] = color
-        self.options[option]["options"][id_]["script"] = script
-        self.options[option]["options"][id_]["arg1"] = arg1
-        self.options[option]["options"][id_]["arg2"] = arg2
-        self.options[option]["options"][id_]["arg3"] = arg3
-    def draw(self):
-        totalText = text_ru_en(self.options[self.option]["name"], 55, 55, 25, (255,255,255))
-        screen.blit(totalText[0], totalText[1])
-        for i in self.options[self.option]["options"]:
-            totalText = text_ru_en(self.options[self.option]["options"][i]["name"], 75, 125+(30*i), 15, self.options[self.option]["options"][i]["color"])
-            screen.blit(totalText[0], totalText[1])
-        totalText = text(">", 55, 122+(30*self.index), 25, (255,255,0))
-        screen.blit(totalText[0], totalText[1])
-    def set_index(self, i):
-        l = len(self.options[self.option]["options"])-1
-        if i < 0: i = l
-        elif i > l: i = 0
-        self.index = i
-    def interact(self):
-        s = self.options[self.option]["options"][self.index]["script"]
-        a1 = self.options[self.option]["options"][self.index]["arg1"]
-        a2 = self.options[self.option]["options"][self.index]["arg2"]
-        a3 = self.options[self.option]["options"][self.index]["arg3"]
-        if s == "options": 
-            self.option = a1
-            self.index = 0
-        elif s == "exit":
-            if a1 != "nosave":
-                with shelve.open("save/save") as f:
-                    try:
-                        f["p"] = p
-                        f["itemsCollect"] = itemsCollect
-                    except: pass
-            pygame.quit()
-            sys.exit()
-        elif s == "setvar":
-            t = ""
-            if a3 == "global": t = f"global {a1}; "
-            exec(f"{t}{a1} = {a2}")
-        elif s == "addvar":
-            t = ""
-            if a3 == "global": t = f"global {a1}; "
-            exec(f"{t}{a1} += {a2}")
-        elif s == "nvar":
-            t = ""
-            if a3 == "global": t = f"global {a1}; "
-            exec(f"{t}{a1} = not {a1}")
-        elif s == "custom":
-            exec(a1)
 
-fpscolors = {
-    False: (255,0,0),
-    True: (123,255,123)
-}     
-        
-def log(text):
-    console_log.append(str(text))
-def print(text):
-    console_log.append(str(text))
 
-def input():
-    console_log.append("no")
 
-def help():
-    global help_i
-    if help_i == 0:
-        log("Bro, you can change EVEREYHING why do you call for help?")
-        log('Just type p.x = 999 or p.inv[0]["amount"] = 999')
-    if help_i == 1:
-        log("Bro, just type something cool in console and watch how it works")
-    if help_i == 2:
-        log("Bruh please stop")
-    if help_i > 2 and help_i != 5 and help_i != 15:
-        log("...")
-    if help_i == 5:
-        log("Just type sys.exit()")
-    if help_i == 15:
-        raise Exception("HelpException: So many help")
-    help_i+=1
-
-help_i = 0
-
-bgs = [
-    bg_menu,
-    bg_fon1izmen,
-    bg_old_menu,
-    bg_menu_7,
-    bg_menu_8
-]
-menu_bg = bg_menu
-bg = bg_fon1izmen
-bg_rect = bg_fon1izmen_rect 
-mode = "menu"
-
+# Finaly
 menu = Menu()
 menu.add_option(0, "Главное меню")
 menu.add_suboption(0, "Продолжить", 0, "setvar", arg1 = "mode", arg2 = "'game'",  arg3 = "global", color = (123,255,123))
@@ -688,7 +713,7 @@ menu.add_suboption(0, "Выйти", 2, "exit", color = (255,0,0))
 menu.add_option(1, "Настройки")
 menu.add_suboption(1, "Назад", 0, "options", arg1 = 0)
 menu.add_suboption(1, "Музыка и звуки", 1, "options", arg1 = 2)
-menu.add_suboption(1, "Показывать FPS", 2, "custom", arg1 = "global showfps; showfps, menu.options[menu.option]['options'][menu.index]['color'] = not showfps, fpscolors[not showfps]", color = (255,0,0))
+menu.add_suboption(1, "Показывать FPS", 2, "custom", arg1 = "global showfps; showfps, menu.options[menu.option]['options'][menu.index]['color'] = not showfps, TFColors[not showfps]", color = (255,0,0))
 menu.add_suboption(1, f"Фон меню {bgs.index(menu_bg)+1}/{len(bgs)}", 3, "custom", arg1 = compile("""
 global menu_bg, bgs
 g = bgs.index(menu_bg)
@@ -697,13 +722,28 @@ if g > len(bgs)-1: g = 0
 menu_bg, menu.options[menu.option]['options'][menu.index]['name'] = bgs[g], 'Фон меню '+str(g+1)+'/'+str(len(bgs))
 """, 'mulstring', 'exec'))
 menu.add_option(2, "Музыка и звуки")
-menu.add_suboption(2, "Назад", 0, "options", arg1 = 1)       
+menu.add_suboption(2, "Назад", 0, "options", arg1 = 1)
 
-def clear():
-    global console_log
-    console_log = []
+c = Camera(0,0,WIDTH,HEIGHT)
+p = Player(400, 311, 20, inv)
+NPCs.append(NPC(500, 311, 20, "Вася", "global inDialoge; inDialoge = True; dialoge.append('Привет')"))
 
 
+# Load save
+if autoload:
+    with shelve.open("save/save") as f:
+        try:
+            p = f["p"]
+            itemsCollect = f["itemsCollect"]
+        except: pass
+
+
+
+  
+
+p.give(4, 1)
+
+# Load mods
 for filename in os.listdir('mods/'):
     if filename.endswith(".mod.py"):
         try:
@@ -711,7 +751,7 @@ for filename in os.listdir('mods/'):
             log(f"{filename} loaded")
         except Exception as e: log(f"{filename} mod error: {e}")
 
-p.give(4, 1)
+
 
 while running:
     tc = int(((day-curTime)/60)/2)
@@ -795,11 +835,11 @@ while running:
                     except: pass
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN and not inConsole and not inDialoge:
+            if event.type == pygame.MOUSEBUTTONDOWN and not inConsole and not inDialoge and not inMap:
                 if event.button == 4: p.slot(p.curSlot-1)
                 elif event.button == 5: p.slot(p.curSlot+1)
                 elif event.button == 1: p.use(p.curSlot)
-            elif event.type == pygame.MOUSEBUTTONDOWN and not inConsole and inDialoge:
+            elif event.type == pygame.MOUSEBUTTONDOWN and not inConsole and inDialoge and not inMap:
                 if event.button == 4:
                     if dialoge_draw_to > len(dialoge)-1:
                         dialoge_draw_from+=1
@@ -810,24 +850,25 @@ while running:
                         dialoge_draw_to-=1
             if event.type == pygame.KEYDOWN:
                 if not inConsole:
-                    if event.unicode == '1': p.slot(0)
-                    if event.unicode == '2': p.slot(1)
-                    if event.unicode == '3': p.slot(2)
-                    if event.unicode == '4': p.slot(3)
-                    if event.unicode == '5': p.slot(4)
-                    if event.unicode == '6': p.slot(5)
-                    if event.unicode == '7': p.slot(6)
-                    if event.unicode == '8': p.slot(7)
-                    if event.unicode == '9': p.slot(8)
-                    if event.unicode == 'q' or event.unicode == 'й': p.drop(p.curSlot)
+                    if not inMap:
+                        if event.unicode == '1': p.slot(0)
+                        if event.unicode == '2': p.slot(1)
+                        if event.unicode == '3': p.slot(2)
+                        if event.unicode == '4': p.slot(3)
+                        if event.unicode == '5': p.slot(4)
+                        if event.unicode == '6': p.slot(5)
+                        if event.unicode == '7': p.slot(6)
+                        if event.unicode == '8': p.slot(7)
+                        if event.unicode == '9': p.slot(8)
+                        if event.unicode == 'q' or event.unicode == 'й': p.drop(p.curSlot)
                     if event.key == pygame.K_TAB and _dev: inConsole = not inConsole
                     if event.key == pygame.K_ESCAPE and not inDialoge: mode = "menu"
+                    if event.key == pygame.K_m: inMap = not inMap
                     elif event.key == pygame.K_RETURN:
                         if inDialoge:
                             inDialoge = False
                             dialoge = []
                         else:
-                            print("a")
                             for n in NPCs:
                                 if pygame.Rect.colliderect(p.rect, n.rect):
                                     n.interact()
@@ -891,15 +932,15 @@ while running:
             if pygame.Rect.colliderect(p.rect, item.rect):
                 if p.give(item.itemid, 1): itemsCollect.remove(item)
         for n in NPCs:
-            n.draw()
             n.update()
+            n.draw()
         for o in objects:
             o.update()
             o.draw()
         s2.set_alpha(abs((((day-curTime)/60)/5)-100))
         screen.blit(s2, (0,0))
-        p.draw()
         p.update()
+        p.draw()
         drawtext = [i for i in range(len(dialoge)) if i >= dialoge_draw_from and i <= dialoge_draw_to]
         if inDialoge:
             pygame.draw.rect(screen, (90,90,90), pygame.Rect(100, 50, 900, 200))
@@ -909,6 +950,18 @@ while running:
                 totalText = text_ru_en_lh(dialoge[i], 120, 70+(j*30), 25, (255,255,255))
                 screen.blit(totalText[0], totalText[1])
                 j+=1
+        if inMap:
+            screen.blit(map_world, (0,0))
+            for i in range(len(biomes_map)):
+                b = pygame.Surface((biomes_map[i]["rect"].width,biomes_map[i]["rect"].height))
+                b.fill((123,255,123))
+                b.set_alpha(128)
+                screen.blit(b, biomes_map[i]["rect"])
+                totalText = text_ru_en_lh(biomes_map[i]["text"], 30, 30, 15, (255,255,255))
+                totalText[1].center = (biomes_map[i]["rect"].x+(biomes_map[i]["rect"].width/2), biomes_map[i]["rect"].y+10)
+                screen.blit(totalText[0], totalText[1])
+                
+
         if timeMode == 1:
             curTime+=timeAdd
             if curTime >= day:
