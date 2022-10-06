@@ -17,6 +17,7 @@ pygame.display.set_icon(pygame.image.load("images/icon.png"))
 clock = pygame.time.Clock()
 running = True
 
+
 # Sprites
 unknown_item = pygame.image.load("images/items/unknown_item.png").convert_alpha()
 map_world = pygame.image.load("images/map.png").convert_alpha()
@@ -81,8 +82,8 @@ def clear():
 
 def log(text):
     console_log.append(str(text))
-def print(text):
-    console_log.append(str(text))
+# def print(text):
+#     console_log.append(str(text))
 
 def input():
     console_log.append("no")
@@ -164,15 +165,15 @@ TFColors = {
 
 # - Biomes
 biomes_map = {
-    0: {"text": "Поляна", "biome": "", "rect": pygame.Rect(850,480,240,110)},
-    1: {"text": "Деревня", "biome": "", "rect": pygame.Rect(700,70,380,120)},
-    2: {"text": "Пещера", "biome": "", "rect": pygame.Rect(350,10,150,75)},
+    0: {"text": "Поляна", "biome": 0, "rect": pygame.Rect(850,480,240,110)},
+    1: {"text": "Деревня", "biome": 1, "rect": pygame.Rect(700,70,380,120)},
+    2: {"text": "Пещера", "biome": 2, "rect": pygame.Rect(350,10,150,75)},
 }
 
 # - Unsoted
 all_letters = string.printable+"АаБбВвГгДдЕеЁёЖжЗзИиЙйКкЛлМмНнОоПпРрСсТтУуФфХхЦцЧчШшЩщЪъЫыЬьЭэЮюЯя"
 showfps = False
-autoload = False
+autoload = True
 s = pygame.Surface((WIDTH,HEIGHT))
 s.set_alpha(128)
 s.fill((0,0,0))
@@ -182,7 +183,7 @@ s2.fill((0,0,0))
 help_i = 0
 rgb_temp = 0
 mode = "menu"
-inMap = True
+inMap = False
 
 
 # - Items System
@@ -319,6 +320,7 @@ items = {
     97: {"name":"Неназначеный предмет", "rarity": 0, "max": 999, "attributes": [], "sprite": None, "script": ""},
     98: {"name":"Неназначеный предмет", "rarity": 0, "max": 999, "attributes": [], "sprite": None, "script": ""},
     99: {"name":"Неназначеный предмет", "rarity": 0, "max": 999, "attributes": [], "sprite": None, "script": ""}  
+
 }
 
 rare = {
@@ -397,9 +399,14 @@ class Menu(object):
             self.index = 0
         elif s == "exit":
             if a1 != "nosave":
-                with shelve.open("save/save") as f:
+                with shelve.open("save/savegame") as f:
                     try:
+                        f["_dev"] = _dev
+                        f["time"] = curTime
                         f["p"] = p
+                        f["c"] = c
+                        f["NPCs"] = NPCs
+                        f["objects"] = objects
                         f["itemsCollect"] = itemsCollect
                     except: pass
             pygame.quit()
@@ -519,7 +526,7 @@ class Player(object):
             if i == self.curSlot: c = (135,135,135)
             else: c = (100,100,100)
             pygame.draw.rect(screen, c, pygame.Rect(50+(j*55), 540, 50, 50))
-            if "empty_sprite" not in items[inv[i]["id"]]["attributes"]:
+            if "empty_sprite" not in items[self.inv[i]["id"]]["attributes"]:
                 if items[self.inv[i]["id"]]["sprite"] != None:
                     screen.blit(items[self.inv[i]["id"]]["sprite"],(55+(j*55),545))
                 elif self.inv[i]["id"] != 0: screen.blit(unknown_item,(55+(j*55),545))
@@ -534,11 +541,11 @@ class Player(object):
             screen.blit(totalText[0], totalText[1])
         temp = ""
         if self.inv[self.curSlot]["amount"] > 1: temp = f"x{self.inv[self.curSlot]['amount']}"
-        c2 = rare[items[inv[self.curSlot]["id"]]["rarity"]]
+        c2 = rare[items[self.inv[self.curSlot]["id"]]["rarity"]]
         if c2 == (-1,-1,-1): 
             (r, g, b) = colorsys.hsv_to_rgb(rgb_temp, 1.0, 1.0)
             c2 = (int(255 * r), int(255 * g), int(255 * b))
-        totalText = text_ru_en(f"{self.curSlot+1}/{len(inv)} {items[self.inv[self.curSlot]['id']]['name']} {temp}", 55, 505, 25, c2)
+        totalText = text_ru_en(f"{self.curSlot+1}/{len(self.inv)} {items[self.inv[self.curSlot]['id']]['name']} {temp}", 55, 505, 25, c2)
         screen.blit(totalText[0], totalText[1])
         screen.blit(spritesets["player"]["normal"][self.sprite], self.drawrect)
         if len(self.inv) > 15: pygame.draw.rect(screen, (100,100,100), pygame.Rect(60+(55*15), 500, 204, 24))
@@ -560,7 +567,7 @@ class Player(object):
                 totalText = text("inf", 162+(55*len(self.inv)), 557, 20, (255,255,255))
                 screen.blit(totalText[0], totalText[1])
     def update(self):
-        t = spritesets["player"]["normal"]["idle"].get_rect()
+        t = spritesets["player"]["normal"][self.sprite].get_rect()
         if self.hp != "inf":
             if self.hp > self.maxhp: self.hp = self.maxhp
             if self.hp < 0: self.hp = 0
@@ -593,11 +600,11 @@ class Player(object):
         if self.onGround:
             self.jumpCount = 35
     def use(self, slot):
-        itemSCR = items[inv[slot]["id"]]["script"]
-        if "inf" not in items[inv[slot]["id"]]["attributes"]:
+        itemSCR = items[self.inv[slot]["id"]]["script"]
+        if "inf" not in items[self.inv[slot]["id"]]["attributes"]:
             self.inv[slot]["amount"]-=1
             if self.inv[slot]["amount"] <= 0: self.inv[slot]["id"] = 0
-        if items[inv[slot]["id"]]["script"] != "":
+        if items[self.inv[slot]["id"]]["script"] != "":
             try:
                 exec(itemSCR)
             except Exception as e:
@@ -645,6 +652,13 @@ class Player(object):
                 self.inv[slotid]["id"] = id_
                 return True
             return False
+    def find(self, id_ = 0, showslot = False):
+            for slot in self.inv:
+                if self.inv[slot]["id"] == id_:
+                    if showslot: return True, slot
+                    else: return True
+            if showslot: return False, -1
+            else: return False
             
 class NPC(object):
     def __init__(self, x, y, hp, name, script = None, showHp = False):
@@ -729,27 +743,49 @@ p = Player(400, 311, 20, inv)
 NPCs.append(NPC(500, 311, 20, "Вася", "global inDialoge; inDialoge = True; dialoge.append('Привет')"))
 
 
+# Load mods
+for filename in os.listdir('mods/'):
+    if filename.endswith(".mod.preload.py"):
+        try:
+            exec(open("mods/"+filename, encoding = "utf_8").read())
+            log(f"{filename} loaded")
+        except Exception as e: log(f"{filename} mod error: {e}")
+
 # Load save
 if autoload:
-    with shelve.open("save/save") as f:
+    with shelve.open("save/savegame") as f:
         try:
             p = f["p"]
+        except Exception as e: print(f"Save load error: {e}")
+        try:
+            c = f["c"]
+        except Exception as e: print(f"Save load error: {e}")
+        try:
+            NPCs = f["NPCs"]
+        except Exception as e: print(f"Save load error: {e}")
+        try:
+            objects = f["objects"]
+        except Exception as e: print(f"Save load error: {e}")
+        try:
             itemsCollect = f["itemsCollect"]
-        except: pass
+        except Exception as e: print(f"Save load error: {e}")
+        try:
+            _dev = f["_dev"]
+        except Exception as e: print(f"Save load error: {e}")
+        try:
+            curTime = f["time"] 
+        except Exception as e: print(f"Save load error: {e}")
+
+        
 
 
-
-  
-
-p.give(4, 1)
-
-# Load mods
 for filename in os.listdir('mods/'):
     if filename.endswith(".mod.py"):
         try:
             exec(open("mods/"+filename, encoding = "utf_8").read())
             log(f"{filename} loaded")
         except Exception as e: log(f"{filename} mod error: {e}")
+
 
 
 
@@ -761,13 +797,18 @@ while running:
         menu.draw()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                with shelve.open("save/save") as f:
+                with shelve.open("save/savegame") as f:
                     try:
+                        f["_dev"] = _dev
+                        f["time"] = curTime
                         f["p"] = p
+                        f["c"] = c
+                        f["NPCs"] = NPCs
+                        f["objects"] = objects
                         f["itemsCollect"] = itemsCollect
-                    except: pass
-                pygame.quit()
-                sys.exit()
+                    except Exception as e: print(e)
+                # pygame.quit()
+                # sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN and not inConsole:
                 if event.button == 4: menu.set_index(menu.index-1)
                 elif event.button == 5: menu.set_index(menu.index+1)
@@ -828,9 +869,14 @@ while running:
         screen.blit(bg, bg_rect)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                with shelve.open("save/save") as f:
+                with shelve.open("save/savegame") as f:
                     try:
+                        f["_dev"] = _dev
+                        f["time"] = curTime
                         f["p"] = p
+                        f["c"] = c
+                        f["NPCs"] = NPCs
+                        f["objects"] = objects
                         f["itemsCollect"] = itemsCollect
                     except: pass
                 pygame.quit()
@@ -839,6 +885,13 @@ while running:
                 if event.button == 4: p.slot(p.curSlot-1)
                 elif event.button == 5: p.slot(p.curSlot+1)
                 elif event.button == 1: p.use(p.curSlot)
+            if event.type == pygame.MOUSEBUTTONDOWN and not inConsole and not inDialoge and inMap:
+                if event.button == 1:
+                    for i in biomes_map:
+                        if biomes_map[i]["rect"].collidepoint(pygame.mouse.get_pos()):
+                            biomes_map[i]["px"], biomes_map[i]["py"] = p.x, p.y
+                            biome = biomes_map[i]["biome"]
+                            p.x, p.y = biomes_map[i]["px"], biomes_map[i]["py"]
             elif event.type == pygame.MOUSEBUTTONDOWN and not inConsole and inDialoge and not inMap:
                 if event.button == 4:
                     if dialoge_draw_to > len(dialoge)-1:
